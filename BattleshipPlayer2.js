@@ -4,8 +4,10 @@
 // =============================================================================
 //                                EDIT THIS FILE
 // =============================================================================
-//      written by: Roman Páleník
+//      written by: [your name]
 // #############################################################################
+
+// sets up web3.js
 
 // sets up web3.js
 GAS_PRICE = 4200000;
@@ -14,25 +16,6 @@ let web3 = new Web3(Web3.givenProvider || "ws://localhost:7545");
 // This is the ABI for your contract (get it from Truffle, from 'bin' folder, or from Remix, in the 'Compile' tab )
 // ============================================================
 var abi = [
-  {
-    anonymous: false,
-    inputs: [
-      {
-        indexed: false,
-        internalType: "uint256",
-        name: "start_of_timeout",
-        type: "uint256",
-      },
-      {
-        indexed: false,
-        internalType: "address",
-        name: "reporter",
-        type: "address",
-      },
-    ],
-    name: "timeout",
-    type: "event",
-  },
   {
     inputs: [],
     name: "store_bid",
@@ -254,31 +237,6 @@ var abi = [
     type: "function",
     constant: true,
   },
-  {
-    inputs: [
-      {
-        internalType: "uint256[]",
-        name: "array",
-        type: "uint256[]",
-      },
-      {
-        internalType: "uint256",
-        name: "value",
-        type: "uint256",
-      },
-    ],
-    name: "isInArray",
-    outputs: [
-      {
-        internalType: "bool",
-        name: "",
-        type: "bool",
-      },
-    ],
-    stateMutability: "view",
-    type: "function",
-    constant: true,
-  },
 ];
 
 // TODO: replace this with your contract's ABI
@@ -287,7 +245,10 @@ abiDecoder.addABI(abi);
 
 // This is the address of the contract you want to connect to; copy this from Remix
 // TODO: fill this in with your contract's address/hash
-let contractAddress = "0xA9da97a514c5b8816D06fDdA7AAa1979B5b178D7";
+let contractAddress = "0x8b1E312747BEE58fa9254a1858b2FD16F4672aB7";
+
+// Reads in the ABI
+var Battleship = new web3.eth.Contract(abi, contractAddress);
 
 // Reads in the ABI
 var Battleship = new web3.eth.Contract(abi, contractAddress);
@@ -309,7 +270,12 @@ class BattleshipPlayer {
     this.opp_addr = opponent_addr;
     this.guesses = Array(BOARD_LEN).fill(Array(BOARD_LEN).fill(false));
     this.my_board = null;
+    this.my_ships = [];
+    this.hits = 0;
 
+    this.opening_nonce;
+    this.proof;
+    this.index;
     // ##############################################################################
     //    TODO initialize a battleship game on receiving solidity contract
     //		- Save anything you'd like to track locally
@@ -318,10 +284,26 @@ class BattleshipPlayer {
     //			(see the spec for an example of how to do this)
     // ##############################################################################
     // Your code here
-    this.my_ships = [];
-    this.my_hits = [];
-    this.last_opponent_guess = 0;
-    console.log("constructor");
+
+    Battleship.events.Timeout(function (err, result) {
+      if (err) {
+        return error(err);
+      }
+      console.log("Timeout called, response needed.");
+      console.log("Player: " + result.returnValues.p);
+      console.log("Timestamp: " + result.returnValues.timestamp);
+    });
+    Battleship.events.GameOver(function (err, result) {
+      if (err) {
+        return error(err);
+      }
+      console.log("GGWP");
+      if (this.name == "player1") {
+        end_game_ui(this.name, 0);
+      } else {
+        end_game_ui(this.name, 1);
+      }
+    });
   }
 
   async place_bet(ante) {
@@ -331,17 +313,15 @@ class BattleshipPlayer {
     //					wei = eth*10**18
     // ##############################################################################
     // Your code here
-
     Battleship.methods
       .store_bid()
-      .send({ from: this.my_addr, value: ante * 10 ** 18, gas: 4200000 });
-
-    console.log("place bet done");
+      .send({ value: ante * 10 ** 18, from: this.my_addr });
+    console.log(ante * 10 ** 18);
   }
 
   /* initialize_board
     \brief
-      sets class variable my_board and creates a commitment to the board, which is returned
+      sets class varible my_board and creates a commitment to the board, which is returned
       and sent to the opponent
     \params:
       initialize_board - [[bool]] - array of arrays where true represents a ship's presense
@@ -350,7 +330,7 @@ class BattleshipPlayer {
   async initialize_board(initial_board) {
     this.my_board = initial_board;
 
-    // Store the positions of your ten ships locally, so you can prove it if you win
+    // Store the positions of your two ships locally, so you can prove it if you win
     for (var i = 0; i < BOARD_LEN; i++) {
       for (var j = 0; j < BOARD_LEN; j++) {
         if (this.my_board[i][j]) {
@@ -370,10 +350,10 @@ class BattleshipPlayer {
     //    TODO store the board commitment in the contract
     // ##############################################################################
     // Your code here
+
     Battleship.methods
       .store_board_commitment(commit)
       .send({ from: this.my_addr });
-
     return [commit, sig];
   }
 
@@ -382,7 +362,7 @@ class BattleshipPlayer {
       called with the returned commitment from initialize_board() as argument
     \params:
       commitment - a commitment to an initial board state received from opponent
-      signature - opponent signature on commitment
+      signature - opponeng signature on commitment
   */
   receive_initial_board_commit(commitment, signature) {
     // +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -414,7 +394,7 @@ class BattleshipPlayer {
 
   /* respond_to_guess
     \brief:
-      called when the opponent guesses a board square (i, j)
+      called when the opponent guesses a board squaure (i, j)
     \params:
       i - int - the row of the guessed board square
       j - int - the column of the guessed board square
@@ -461,19 +441,21 @@ class BattleshipPlayer {
     //	  Hint: What arguments do you need to pass to the contract to check a ship?
     // ##############################################################################
     // Your code here
-    this.opening = opening;
-    this.nonce = nonce;
     this.proof = proof;
-    this.last_opponent_guess = i * BOARD_LEN + j;
-
-    if (opening == true) {
-      this.my_hits.push({
-        nonce: web3.utils.asciiToHex(
-          JSON.stringify(opening) + JSON.stringify(nonce)
-        ),
-        proof: proof,
-        index: i * BOARD_LEN + j,
-      });
+    this.index = i * BOARD_LEN + j;
+    this.opening_nonce = web3.utils.fromAscii(
+      JSON.stringify(opening) + JSON.stringify(nonce)
+    );
+    if (opening) {
+      this.hits += 1;
+      Battleship.methods
+        .check_one_ship(
+          this.opening_nonce,
+          this.proof,
+          this.index,
+          this.opp_addr
+        )
+        .send({ from: this.my_addr });
     }
   }
 
@@ -485,7 +467,7 @@ class BattleshipPlayer {
     // Your code here
     Battleship.methods
       .claim_opponent_left(this.opp_addr)
-      .send({ from: this.my_addr, gas: GAS_PRICE });
+      .send({ from: this.my_addr });
   }
 
   async handle_timeout_accusation() {
@@ -495,13 +477,13 @@ class BattleshipPlayer {
     // 		- Returns true if the game is over
     // ##############################################################################
     // Your code here
-    await Battleship.methods
+    Battleship.methods
       .handle_timeout(this.opp_addr)
-      .send({ from: this.my_addr, gas: GAS_PRICE });
-
-    let result = await Battleship.methods
-      .is_game_over()
-      .call({ from: this.my_addr, gas: GAS_PRICE });
+      .send({ from: this.my_addr });
+    console.log("Response sent.");
+    return await Battleship.methods
+      .isGameOver()
+      .call({ from: this.my_addr, gas: 2000000 });
   }
 
   /* claim_timeout
@@ -517,13 +499,12 @@ class BattleshipPlayer {
     // 		- Returns true if game is over
     // ##############################################################################
     // Your code here
-    await Battleship.methods
+    Battleship.methods
       .claim_timeout_winnings(this.opp_addr)
-      .send({ from: this.my_addr, gas: GAS_PRICE });
-
+      .send({ from: this.my_addr });
     return await Battleship.methods
-      .is_game_over()
-      .call({ from: this.my_addr, gas: GAS_PRICE });
+      .isGameOver()
+      .call({ from: this.my_addr, gas: 2000000 });
   }
 
   /*
@@ -539,25 +520,27 @@ class BattleshipPlayer {
     //		- For this project, the proof should always verify (the opponent will never lie).
     // ##############################################################################
     // Your code here
-    let opening_nonce = web3.utils.fromAscii(
-      JSON.stringify(this.opening) + JSON.stringify(this.nonce)
-    );
 
-    await Battleship.methods
-      .accuse_cheating(
-        opening_nonce,
-        this.proof,
-        this.last_opponent_guess,
-        this.my_addr
-      )
-      .send({ from: this.my_addr });
-
-    console.log(
-      "hra je u konca lebo si podvadzal: ",
-      await Battleship.methods
-        .is_game_over()
-        .call({ from: this.my_addr, gas: GAS_PRICE })
-    );
+    if (
+      typeof this.opening_nonce !== "undefined" &&
+      typeof this.proof !== "undefined" &&
+      typeof this.index !== "undefined"
+    ) {
+      Battleship.methods
+        .accuse_cheating(
+          this.opening_nonce,
+          this.proof,
+          this.index,
+          this.opp_addr
+        )
+        .send({ from: this.my_addr });
+      return await Battleship.methods
+        .isGameOver()
+        .call({ from: this.my_addr, gas: 2000000 });
+    } else {
+      console.log("Too early, pal.");
+    }
+    return false;
   }
 
   /*
@@ -567,57 +550,40 @@ class BattleshipPlayer {
   async claim_win() {
     // ##############################################################################
     //    TODO implement claim of a win
-    //		- Check the placements of 10 hits you have made on the opponent's board.
+    //		- Check the placements of ten hits you have made on the opponent's board.
     //		- Check (verify with contract) that your board has 10 ships.
     //		- Claim the win to end the game.
     //		Hint: you can convert an opening and a nonce into a bytes memory like this:
     //			web3.utils.fromAscii(JSON.stringify(opening) + JSON.stringify(nonce))
     // ##############################################################################
     // Your code here
+    if (this.hits === 10 && this.my_ships.length === 10) {
+      var x;
+      for (x of this.my_ships) {
+        let i = x[0];
+        let j = x[1];
+        let opening = this.my_board[i][j];
+        let proof = get_proof_for_board_guess(this.my_board, this.nonces, [
+          i,
+          j,
+        ]);
+        let index = i * BOARD_LEN + j;
+        let nonce = this.nonces[i][j];
+        let opening_nonce = web3.utils.fromAscii(
+          JSON.stringify(opening) + JSON.stringify(nonce)
+        );
 
-    //Verified my ships with the contract
-    for (let row = 0; row < 6; row++) {
-      for (let col = 0; col < 6; col++) {
-        if (this.my_board[row][col] == true) {
-          await Battleship.methods
-            .check_one_ship(
-              web3.utils.asciiToHex(
-                JSON.stringify(true) + JSON.stringify(this.nonces[row][col])
-              ),
-              get_proof_for_board_guess(this.my_board, this.nonces, [row, col]),
-              row * 6 + col,
-              this.my_addr
-            )
-            .send({
-              from: this.my_addr,
-              gas: GAS_PRICE,
-            });
-        }
+        Battleship.methods
+          .check_one_ship(opening_nonce, proof, index, this.my_addr)
+          .send({ from: this.my_addr });
       }
+      Battleship.methods.claim_win().send({ from: this.my_addr });
+    } else {
+      console.log("You haven't placed and hit 10 ships.");
     }
-
-    //Verify opponent ship-hits with the contract
-    for (let hit = 0; hit < this.my_hits.length; hit++) {
-      let { nonce, proof, index } = this.my_hits[hit];
-      console.log("toto idem poslat na kontract", nonce);
-      await Battleship.methods
-        .check_one_ship(nonce, proof, index, this.opp_addr)
-        .send({
-          from: this.my_addr,
-          gas: GAS_PRICE,
-        });
-    }
-
-    try {
-      await Battleship.methods
-        .claim_win()
-        .send({ from: this.my_addr, gas: GAS_PRICE });
-      return await Battleship.methods
-        .is_game_over()
-        .call({ from: this.my_addr, gas: GAS_PRICE });
-    } catch (e) {
-      console.log(e);
-    }
+    return await Battleship.methods
+      .isGameOver()
+      .call({ from: this.my_addr, gas: 2000000 });
   }
 
   /*
@@ -625,21 +591,11 @@ class BattleshipPlayer {
 			Forfeit the game - sends the opponent the entire reward.
 	*/
   async forfeit_game() {
+    Battleship.methods.forfeit(this.opp_addr).send({ from: this.my_addr });
     // ##############################################################################
     //    TODO forfeit the battleship game
     //		- Call solidity to give up your bid to the other player and end the game.
     // ##############################################################################
     // Your code here
-    try {
-      await Battleship.methods
-        .forfeit(this.opp_addr)
-        .send({ from: this.my_addr, gas: 4200000 });
-
-      return await Battleship.methods
-        .is_game_over()
-        .call({ from: this.my_addr, gas: 4200000 });
-    } catch (e) {
-      console.log("Error: ", e);
-    }
   }
 }

@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <title>Battleship!</title>
-    <link rel="stylesheet" type="text/css" href="style.css">
+    <link rel="stylesheet" type="text/css" href="style.css" />
     <script src="./web3.min.js"></script>
     <script src="./abi-decoder.js"></script>
     <script src="https://code.jquery.com/jquery-3.2.1.slim.min.js"></script>
@@ -13,25 +13,25 @@
   <body>
     <div id="title-container">
       <div id="sub-title-container">
-    	 <h1 id="title">Play Battleship!</h1>
-       <h2 id="subtitle"></h2>
+        <h1 id="title">Play Battleship!</h1>
+        <h2 id="subtitle"></h2>
       </div>
       <div id="game-controller">
-        <h3 class="player-title">Player 1: </h3>
+        <h3 class="player-title">Player 1:</h3>
         <select id="player1-account" class="account"></select>
         <p>Account Balance: <span id="player1-account-balance"></span></p>
         <h3 class="player-title">Player 2:</h3>
         <select id="player2-account" class="account"></select>
         <p>Account Balance: <span id="player2-account-balance"></span></p>
         <label for="bet">Bet in Eth:</label>
-        <input id="bet" type="text"/>
+        <input id="bet" type="text" />
         <h5 id="message"></h5>
         <button id="start-stop">Start Game</button>
       </div>
     </div>
     <div id="game-container">
       <div id="player1" class="player-container">
-        <h3 class="title">Player 1: </h3>
+        <h3 class="title">Player 1:</h3>
         <h4 class="address"></h4>
         <span class="their-board-label">opponent board</span>
         <table class="their-board"></table>
@@ -40,7 +40,7 @@
         <div class="controller"></div>
       </div>
       <div id="player2" class="player-container">
-        <h3 class="title">Player 2: </h3>
+        <h3 class="title">Player 2:</h3>
         <h4 class="address"></h4>
         <span class="their-board-label">opponent board</span>
         <table class="their-board"></table>

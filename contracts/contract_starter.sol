@@ -16,21 +16,22 @@ contract Battleship {
     bytes32[] initial_states; // on position 0 is fisrt player on position 
     bool is_game_running = true;
 
-    bool[] first_player_winning_moves;
-    bool[] second_player_winning_moves;
 
-    bool[] first_player_hitted_ships;
-    bool[] second_player_hitted_ships;
-
-    bool[] array_to_reset;
+    uint[] array_to_reset;
 
     string winner;
 
-    bool player1_leaved = false;
-    bool player2_leaved = false;
 
     uint start_of_timeout = 0;
     address player_accused_for_timeout;
+
+    // you cannot hit the same place twice so we need to store the hited places indexes 
+    uint[] first_player_hitted_places_indexes;
+    uint[] second_player_hitted_places_indexes;
+
+    // we cannot have the same index of our ship twice so we need to store the indexes
+    uint[] first_player_own_ships_indexes;
+    uint[] second_player_own_ships_indexes;
 
 
     event timeout(uint start_of_timeout, address reporter);
@@ -53,12 +54,18 @@ contract Battleship {
     // Refund excess bids to the second player if they bid too much.
     function store_bid() public payable{
 
-    is_game_running = true;
     players.push(msg.sender);
     //control bet if player one set too high
-    bet = msg.value;
-
-
+    if(players[0] == msg.sender){
+        bet = msg.value;
+    }
+    else{
+        require(msg.value >= bet, "BATTLESHIP: value sent has to be greater or equal then bid submitted by player 1");
+        if(msg.value > bet){
+           msg.sender.transfer(msg.value - bet);
+        }
+        is_game_running = true;
+    }
     skusam = "uz je tam ina";
     }
 
@@ -73,11 +80,12 @@ contract Battleship {
         initial_states = initial_states2;
         is_game_running = false;
         
-        first_player_winning_moves = array_to_reset;
-        second_player_winning_moves = array_to_reset;
-        
-        first_player_hitted_ships = array_to_reset;
-        second_player_hitted_ships = array_to_reset;
+        first_player_hitted_places_indexes = array_to_reset;
+        second_player_hitted_places_indexes = array_to_reset;
+
+    // we cannot have the same index of our ship twice so we need to store the indexes
+        first_player_own_ships_indexes = array_to_reset;
+        second_player_own_ships_indexes = array_to_reset;
 
     }
 
@@ -94,32 +102,39 @@ contract Battleship {
     // owner - the address of the owner of the board on which this ship lives
     function check_one_ship(bytes memory opening_nonce, bytes32[] memory proof,
         uint256 guess_leaf_index, address owner) public returns (bool result) {
-        bytes32 commit;
         //check player one
+
+         bool is_valid = verify_opening(opening_nonce, proof, guess_leaf_index, owner == players[0] ? initial_states[0] : initial_states[1]);
+
         if(msg.sender == players[0]){
             //sending his own ships
             if(msg.sender == owner){
-            commit = initial_states[0];
-            first_player_winning_moves.push(verify_opening(opening_nonce, proof, guess_leaf_index, commit));
+                if( !isInArray(first_player_own_ships_indexes, guess_leaf_index) && is_valid){
+                   first_player_own_ships_indexes.push(guess_leaf_index);
+                }
             }
             else{
-                commit = initial_states[1];
-                first_player_hitted_ships.push(verify_opening(opening_nonce, proof, guess_leaf_index, commit));
+                if( !isInArray(first_player_hitted_places_indexes, guess_leaf_index) && is_valid){
+                   first_player_hitted_places_indexes.push(guess_leaf_index);
+                }
             }
         }
         // check for player two
         else{
              //sending his own ships
             if(msg.sender == owner){
-                commit = initial_states[1];
-                second_player_winning_moves.push(verify_opening(opening_nonce, proof, guess_leaf_index, commit));
-            }else{
-                commit = initial_states[0];
-                second_player_hitted_ships.push(verify_opening(opening_nonce, proof, guess_leaf_index, commit));
+                if( !isInArray(second_player_own_ships_indexes, guess_leaf_index) && is_valid){
+                   second_player_own_ships_indexes.push(guess_leaf_index);
+                }
+            }
+            else{
+                if( !isInArray(second_player_hitted_places_indexes, guess_leaf_index) && is_valid){
+                   second_player_hitted_places_indexes.push(guess_leaf_index);
+                }
             }
         }    
         
-        return verify_opening(opening_nonce, proof, guess_leaf_index, commit);
+        return is_valid;
     }
 
     // Claim you won the game
@@ -129,19 +144,7 @@ contract Battleship {
     function claim_win() public {
         if(msg.sender == players[0]){
             //check if players 1 has 10 proven ships and 10 proven hits, then send him bet*2
-            if(first_player_winning_moves.length != 10 || first_player_hitted_ships.length != 10) {return;}
-
-            for (uint i = 0; i < first_player_winning_moves.length; i++) {
-                if(first_player_winning_moves[i] == false){
-                    return;
-                }
-            }
-
-            for (uint j = 0; j < first_player_hitted_ships.length; j++) {
-                if(first_player_hitted_ships[j] == false){
-                    return;
-                }
-            }
+            if(first_player_own_ships_indexes.length != 10 || first_player_hitted_places_indexes.length != 10) {return;}
 
             winner = "je to hrac 1";    
             msg.sender.transfer(address(this).balance); 
@@ -150,19 +153,8 @@ contract Battleship {
         else if(msg.sender == players[1]){
             //check if players 1 has 10 proven ships and 10 proven hits, then send him bet*2
 
-            if(second_player_winning_moves.length != 10 || second_player_hitted_ships.length != 10) {return;}
+            if(second_player_own_ships_indexes.length != 10 || second_player_hitted_places_indexes.length != 10) {return;}
 
-            for (uint i = 0; i < second_player_winning_moves.length; i++) {
-                if(second_player_winning_moves[i] == false){            
-                    return;
-                }
-            }
-
-            for (uint j = 0; j < second_player_hitted_ships.length; j++) {
-                if(second_player_hitted_ships[j] == false){        
-                    return;
-                }
-            }
 
             winner = "je to hrac 2";
             msg.sender.transfer(address(this).balance);
@@ -175,7 +167,7 @@ contract Battleship {
     // Regardless of cheating, board state, or any other conditions, this function
     // results in all funds being sent to the opponent and the game being over.
     function forfeit(address payable opponent) public {
-        // bet *2 because i need to send him his bet and opponents bet
+       
         opponent.transfer(address(this).balance);
         clear_state();
     }
@@ -291,7 +283,16 @@ contract Battleship {
                 curr_proof_index++;
             }
         }
-        return (curr_commit == commit);
+        return (curr_commit == commit);    }
 
-    }
+        function isInArray(uint256[] memory array, uint256 value) public view returns (bool) {
+            for (uint i = 0; i < array.length; i++) {
+                if (array[i] == value) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+
 }

@@ -1,6 +1,7 @@
 const assert = require("assert");
 const Battleship = artifacts.require("Battleship");
 
+// two account addresses NEED TO CHANGE
 GAS_PRICE = 4200000;
 BID = 1 * 10 ** 18;
 // Test //
@@ -12,6 +13,7 @@ contract("Battleship", (accounts) => {
 
   before(async () => {
     battleshipContract = await Battleship.new();
+    console.log(battleshipContract.address);
   });
 
   describe("store bid and forfeit game", async () => {
@@ -37,9 +39,10 @@ contract("Battleship", (accounts) => {
     });
 
     it("player 1 forfeit game", async () => {
-      await battleshipContract.forfeit(second_player);
+      await battleshipContract.forfeit(first_player);
 
       let balance = await web3.eth.getBalance(battleshipContract.address);
+      console.log("toto je balance", balance);
       assert.equal(
         balance,
         0,
