@@ -287,7 +287,7 @@ abiDecoder.addABI(abi);
 
 // This is the address of the contract you want to connect to; copy this from Remix
 // TODO: fill this in with your contract's address/hash
-let contractAddress = "0xf86cd58ccFAD108D18881E72DCC2AFB43975bd0A";
+let contractAddress = "0x80855e6cc5634FD23101CeeC28fBfEd53B28767C";
 
 // Reads in the ABI
 var Battleship = new web3.eth.Contract(abi, contractAddress);
@@ -500,7 +500,7 @@ class BattleshipPlayer {
       .handle_timeout(this.opp_addr)
       .send({ from: this.my_addr, gas: GAS_PRICE });
 
-    let result = await Battleship.methods
+    return await Battleship.methods
       .is_game_over()
       .call({ from: this.my_addr, gas: GAS_PRICE });
   }
@@ -549,7 +549,7 @@ class BattleshipPlayer {
         opening_nonce,
         this.proof,
         this.last_opponent_guess,
-        this.my_addr
+        this.opp_addr
       )
       .send({ from: this.my_addr });
 

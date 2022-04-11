@@ -24,6 +24,7 @@ contract Battleship {
 
     uint start_of_timeout = 0;
     address player_accused_for_timeout;
+    address player_accused_for_timeout_reset;
 
     // you cannot hit the same place twice so we need to store the hited places indexes 
     uint[] first_player_hitted_places_indexes;
@@ -209,7 +210,7 @@ contract Battleship {
     function claim_opponent_left(address opponent) public {
         require(is_game_running == true, "BATTLESHIP: game is not running");
         require(callFromOnePlayerWithOpponent(payable(opponent)), "BATTLESHIP: only player 1 or 2 can claim opponent left");
-        
+        require(msg.sender != player_accused_for_timeout, "Player must claim timeout before calling this function");
        start_of_timeout = block.timestamp;
         player_accused_for_timeout = payable(opponent);
         emit timeout(start_of_timeout, msg.sender);
@@ -223,6 +224,7 @@ contract Battleship {
         if(player_accused_for_timeout == msg.sender){
             if (start_of_timeout != 0 && now <= start_of_timeout + 60) {
                 start_of_timeout = 0;
+                player_accused_for_timeout = player_accused_for_timeout_reset;
             }
         }
     }

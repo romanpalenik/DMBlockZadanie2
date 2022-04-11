@@ -20,14 +20,14 @@
     </h1>
     <div class='clearfix'>
       <div class='fl pad1y space-right2'>
-        <span class="strong">41.05% </span>
+        <span class="strong">41.24% </span>
         <span class="quiet">Statements</span>
-        <span class='fraction'>39/95</span>
+        <span class='fraction'>40/97</span>
       </div>
       <div class='fl pad1y space-right2'>
-        <span class="strong">26.47% </span>
+        <span class="strong">25.71% </span>
         <span class="quiet">Branches</span>
-        <span class='fraction'>18/68</span>
+        <span class='fraction'>18/70</span>
       </div>
       <div class='fl pad1y space-right2'>
         <span class="strong">62.5% </span>
@@ -35,9 +35,9 @@
         <span class='fraction'>10/16</span>
       </div>
       <div class='fl pad1y space-right2'>
-        <span class="strong">40.63% </span>
+        <span class="strong">40.82% </span>
         <span class="quiet">Lines</span>
-        <span class='fraction'>39/96</span>
+        <span class='fraction'>40/98</span>
       </div>
     </div>
   </div>
@@ -352,7 +352,10 @@
 307
 308
 309
-310</td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+310
+311
+312</td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -563,17 +566,7 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">1×</span>
 <span class="cline-any cline-yes">1×</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">1×</span>
-<span class="cline-any cline-yes">1×</span>
-<span class="cline-any cline-yes">1×</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">1×</span>
 <span class="cline-any cline-yes">1×</span>
 <span class="cline-any cline-yes">1×</span>
@@ -584,14 +577,25 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1×</span>
+<span class="cline-any cline-yes">1×</span>
+<span class="cline-any cline-yes">1×</span>
+<span class="cline-any cline-yes">1×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">1×</span>
 <span class="cline-any cline-yes">1×</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">1×</span>
 <span class="cline-any cline-yes">1×</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -600,7 +604,7 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">3×</span>
+<span class="cline-any cline-yes">2×</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -687,6 +691,7 @@ contract Battleship {
 &nbsp;
     uint start_of_timeout = 0;
     address player_accused_for_timeout;
+    address player_accused_for_timeout_reset;
 &nbsp;
     // you cannot hit the same place twice so we need to store the hited places indexes 
     uint[] first_player_hitted_places_indexes;
@@ -872,7 +877,7 @@ contract Battleship {
     function claim_opponent_left(address opponent) public {
         <span class="missing-if-branch" title="else path not taken" >E</span>require(is_game_running == true, "BATTLESHIP: game is not running");
         <span class="missing-if-branch" title="else path not taken" >E</span>require(callFromOnePlayerWithOpponent(payable(opponent)), "BATTLESHIP: only player 1 or 2 can claim opponent left");
-        
+        <span class="missing-if-branch" title="else path not taken" >E</span>require(msg.sender != player_accused_for_timeout, "Player must claim timeout before calling this function");
        start_of_timeout = block.timestamp;
         player_accused_for_timeout = payable(opponent);
         emit timeout(start_of_timeout, msg.sender);
@@ -886,6 +891,7 @@ contract Battleship {
         <span class="missing-if-branch" title="else path not taken" >E</span>if(player_accused_for_timeout == msg.sender){
             <span class="missing-if-branch" title="else path not taken" >E</span>if (start_of_timeout != 0 &amp;&amp; now &lt;= start_of_timeout + 60) {
                 start_of_timeout = 0;
+                player_accused_for_timeout = player_accused_for_timeout_reset;
             }
         }
     }
@@ -897,8 +903,8 @@ contract Battleship {
         <span class="missing-if-branch" title="else path not taken" >E</span>require(is_game_running == true, "BATTLESHIP: game is not running");
         <span class="missing-if-branch" title="else path not taken" >E</span>require(callFromOnePlayerWithOpponent(payable(opponent)), "BATTLESHIP: only player 1 or 2 can claim timeout winnings");
         // opponet cannot trigger winning
-        <span class="missing-if-branch" title="else path not taken" >E</span>if(player_accused_for_timeout == opponent){
-        <span class="missing-if-branch" title="if path not taken" >I</span>if (start_of_timeout != 0 &amp;&amp; now &gt; start_of_timeout + 60) {
+        <span class="missing-if-branch" title="if path not taken" >I</span>if(player_accused_for_timeout == opponent){
+<span class="cstat-no" title="statement not covered" >        if (start_of_timeout != 0 &amp;&amp; now &gt; start_of_timeout + 60) {</span>
 <span class="cstat-no" title="statement not covered" >            msg.sender.transfer(address(this).balance)</span>;
 <span class="cstat-no" title="statement not covered" >            clear_state()</span>;
             }
@@ -976,7 +982,7 @@ contract Battleship {
 </div><!-- /wrapper -->
 <div class='footer quiet pad2 space-top1 center small'>
   Code coverage
-  generated by <a href="http://istanbul-js.org/" target="_blank">istanbul</a> at Mon Apr 11 2022 10:37:03 GMT+0200 (Central European Summer Time)
+  generated by <a href="http://istanbul-js.org/" target="_blank">istanbul</a> at Mon Apr 11 2022 14:20:17 GMT+0200 (Central European Summer Time)
 </div>
 </div>
 <script src="../prettify.js"></script>

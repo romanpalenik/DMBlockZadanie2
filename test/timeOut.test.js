@@ -49,6 +49,7 @@ contract("Battleship", (accounts) => {
       await battleshipContract.claim_opponent_left(second_player, {
         from: first_player,
       });
+
       await battleshipContract.handle_timeout(first_player, {
         from: second_player,
       });
@@ -57,9 +58,6 @@ contract("Battleship", (accounts) => {
       });
 
       let is_game_over = await battleshipContract.is_game_over.call();
-
-      console.log("is_game_over: ", await battleshipContract.is_game_over());
-      console.log("is_game_over cez call: ", is_game_over);
 
       assert.equal(is_game_over, false, "The game should be running.");
     });
