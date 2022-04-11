@@ -287,7 +287,7 @@ abiDecoder.addABI(abi);
 
 // This is the address of the contract you want to connect to; copy this from Remix
 // TODO: fill this in with your contract's address/hash
-let contractAddress = "0xA9da97a514c5b8816D06fDdA7AAa1979B5b178D7";
+let contractAddress = "0xf86cd58ccFAD108D18881E72DCC2AFB43975bd0A";
 
 // Reads in the ABI
 var Battleship = new web3.eth.Contract(abi, contractAddress);
@@ -349,7 +349,7 @@ class BattleshipPlayer {
   */
   async initialize_board(initial_board) {
     this.my_board = initial_board;
-
+    console.log("initialize board", initial_board);
     // Store the positions of your ten ships locally, so you can prove it if you win
     for (var i = 0; i < BOARD_LEN; i++) {
       for (var j = 0; j < BOARD_LEN; j++) {
@@ -370,6 +370,7 @@ class BattleshipPlayer {
     //    TODO store the board commitment in the contract
     // ##############################################################################
     // Your code here
+    console.log(commit);
     Battleship.methods
       .store_board_commitment(commit)
       .send({ from: this.my_addr });

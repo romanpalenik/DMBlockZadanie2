@@ -35,6 +35,14 @@ contract Battleship {
 
 
     event timeout(uint start_of_timeout, address reporter);
+
+    function callFromOnePlayerWithOpponent(address payable opponent) internal view returns(bool){
+        return (msg.sender == players[0] && opponent == players[1]) || (msg.sender == players[1] && opponent == players[0]);
+    }
+
+     function callFromOnePlayer() internal view returns(bool){
+        return (msg.sender == players[0] || msg.sender == players[1]);
+    }
     
 
     // Declare state variables here.
@@ -92,6 +100,8 @@ contract Battleship {
     // Store the initial board commitments of each player
     // Note that merkle_root is the hash of the topmost value of the merkle tree
     function store_board_commitment(bytes32 merkle_root) public {
+        require(is_game_running == true, "BATTLESHIP: game is not running");
+        require(callFromOnePlayer(), "BATTLESHIP: only player 1 or 2 can store board commitment");
         initial_states.push(merkle_root);
     }
 
@@ -142,6 +152,8 @@ contract Battleship {
     // 10 of your own ship placements with the contract, then this function
     // should transfer winning funds to you and end the game.
     function claim_win() public {
+        require(is_game_running == true, "BATTLESHIP: game is not running");
+        require(callFromOnePlayer(), "BATTLESHIP: only player 1 or 2 can claim win");
         if(msg.sender == players[0]){
             //check if players 1 has 10 proven ships and 10 proven hits, then send him bet*2
             if(first_player_own_ships_indexes.length != 10 || first_player_hitted_places_indexes.length != 10) {return;}
@@ -167,7 +179,8 @@ contract Battleship {
     // Regardless of cheating, board state, or any other conditions, this function
     // results in all funds being sent to the opponent and the game being over.
     function forfeit(address payable opponent) public {
-       
+        require(is_game_running == true, "BATTLESHIP: game is not running");
+        require(callFromOnePlayer(), "BATTLESHIP: only player 1 or 2 can forfeit");
         opponent.transfer(address(this).balance);
         clear_state();
     }
@@ -179,16 +192,10 @@ contract Battleship {
     // owner - the address of the owner of the board on which this ship lives
     function accuse_cheating(bytes memory opening_nonce, bytes32[] memory proof,
         uint256 guess_leaf_index, address owner) public returns (bool result) {
-        bytes32 commit;
-        // control his tree so i need his root
-        if(owner == players[0]){
-            commit = initial_states[1];
-        }
-        else{
-            commit = initial_states[0];
-        }
+        require(is_game_running == true, "BATTLESHIP: game is not running");
+        require(callFromOnePlayer(), "BATTLESHIP: only player 1 or 2 can accuse cheating");
         // verify return if his move was clean, if true then he is not cheteaded that why we need to negate it
-        bool cheated = !verify_opening(opening_nonce, proof, guess_leaf_index, commit);
+        bool cheated = !verify_opening(opening_nonce, proof, guess_leaf_index, owner == players[0] ? initial_states[0] : initial_states[1]);
         //send sender bet becasause other player cheated
         if(cheated) {
             msg.sender.transfer(address(this).balance);
@@ -200,6 +207,9 @@ contract Battleship {
     // Claim the opponent of taking too long/leaving
     // Trigger an event that both players should listen for.
     function claim_opponent_left(address opponent) public {
+        require(is_game_running == true, "BATTLESHIP: game is not running");
+        require(callFromOnePlayerWithOpponent(payable(opponent)), "BATTLESHIP: only player 1 or 2 can claim opponent left");
+        
        start_of_timeout = block.timestamp;
         player_accused_for_timeout = payable(opponent);
         emit timeout(start_of_timeout, msg.sender);
@@ -221,7 +231,8 @@ contract Battleship {
     // The player MUST claim winnings. The opponent failing to handle the timeout on their end should not
     // result in the game being over. If the timer has not run out, do nothing.
     function claim_timeout_winnings(address opponent) public {
-        // TODO
+        require(is_game_running == true, "BATTLESHIP: game is not running");
+        require(callFromOnePlayerWithOpponent(payable(opponent)), "BATTLESHIP: only player 1 or 2 can claim timeout winnings");
         // opponet cannot trigger winning
         if(player_accused_for_timeout == opponent){
         if (start_of_timeout != 0 && now > start_of_timeout + 60) {
